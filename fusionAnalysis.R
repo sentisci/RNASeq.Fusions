@@ -52,9 +52,45 @@ df <- finalResultMatrixJoin %>% data.frame()
 df$Any_NA <- apply(df[,grep(paste( c("Patient.ID", "Sample.ID", "Sample.ID.Alias", "DIAGNOSIS.Alias", "LIBRARY_TYPE"),collapse = "|"), names(df) )],1, function(x) anyNA(x))
 df_NA_TRUE <- df[which(df$Any_NA == "TRUE"),] %>% dplyr::distinct(Sample.ID,DIAGNOSIS.Alias,LIBRARY_TYPE);dim(df_NA_TRUE); View(df_NA_TRUE)
 
+
+## Make a key 
+finalResultMatrixJoin$key <- paste(finalResultMatrixJoin$left_chr, finalResultMatrixJoin$left_gene, finalResultMatrixJoin$right_chr, 
+                                   finalResultMatrixJoin$right_gene, sep="_")
 ## Count samples with Defuse
-finalResultMatrixJoinDefuse <- finalResultMatrixJoin %>% filter( grepl('Defuse', tool)) %>%
+finalfusionResultMatrix.Defuse <- finalResultMatrixJoin %>% filter( grepl('Defuse', tool)) %>%
                                           dplyr::distinct(Patient.ID, Sample.ID, Case.ID)
-dim(finalResultMatrixJoinDefuse); View(finalResultMatrixJoinDefuse)
-write.table(finalResultMatrixJoinDefuse, "../finalResultMatrixJoinDefuse.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
+dim(finalfusionResultMatrix); View(finalfusionResultMatrix)
+#write.table(finalResultMatrixJoin, "../finalfusionResultMatrix.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
 ## Keep only max spanning read count.
+
+##Read Annotation Data
+Annotation  <- readRDS("C:/Users/sindiris/R Scribble/Annotation RDS/annotation_ENSEMBL_gene.RDS") ; Annotation$Start <- as.numeric(as.character(Annotation$Start)) ; Annotation$End <- as.numeric(as.character(Annotation$End))
+
+##Filter Bogus Genes
+geneFusionRight <-  as.character( unique(finalResultMatrixJoin$right_gene) )
+rightGenePair   <- geneFusionRight[which(!geneFusionRight %in% Annotation$GeneName)]
+geneFusionLeft  <- as.character(unique(finalResultMatrixJoin$left_gene) )
+leftGenePair    <- geneFusionLeft[which(!geneFusionLeft %in% Annotation$GeneName)]
+
+## Remove disgusting samples . "NCIEWS5000muscle_T_D23N9ACXX" , "NCI0228normal_T_C3JV2ACXX" . I dont understand why tumor patient normal is used in
+## RNASeq cohort experiment
+finalResultMatrixJoin.NoPatientNormal <-  finalResultMatrixJoin %>% filter(!Sample.ID %in% c("NCIEWS5000muscle_T_D23N9ACXX" , "NCI0228normal_T_C3JV2ACXX"))
+dim(finalResultMatrixJoin.NoPatientNormal)
+
+##Filter Fusion File
+dim(finalResultMatrixJoin)
+fusionFile.NS  <- finalResultMatrixJoin.NoPatientNormal %>% filter( DIAGNOSIS.Alias %in% c("NS") ) ; dim(fusionFile.NS )
+finalResultMatrixJoin.NoNS <- finalResultMatrixJoin.NoPatientNormal %>% filter(! key %in% fusionFile.NS$key ); dim(finalResultMatrixJoin.NoNS)
+## Remove bogus genes
+fusionFile  <- finalResultMatrixJoin.NoNS %>% filter( !(left_gene %in% leftGenePair) ) %>%  filter( !(right_gene %in% rightGenePair) ) ; dim(fusionFile)
+## Keep the selected tier
+fusionFile <- fusionFile %>% filter(var_level %in% c("Tier 1.1", "Tier 1.2", "Tier 1.3", "Tier 2.1", "Tier 2.2")) ; dim(fusionFile)
+
+### Extra Filtering and Condensing
+fusionFileSplits <- fusionFile %>% tidyr::separate(spanreadcount, c("SPTool1", "SPTool2", "SPTool3"), " ")
+fusionFileSplits[is.na(fusionFileSplits)] <- 0
+head(fusionFileSplits)
+
+fusionFileFilt.v1 <- fusionFileSplits %>% filter( !(tool %in% c("STAR-fusion", "FusionCatcher")) & SPTool1 >= 5 | SPTool2 >= 5 | SPTool3 >= 5)
+fusionFileFilt.v2 <- fusionFileFilt.v1 %>% filter( !(var_level %in% c("Tier 2.1")) & SPTool1 >= 10 | SPTool2 >= 10 | SPTool3 >= 10)
+write.table(fusionFileFilt.v2 , "../FinalFilteredfusionResultMatrix.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
