@@ -74,7 +74,7 @@ leftGenePair    <- geneFusionLeft[which(!geneFusionLeft %in% Annotation$GeneName
 
 ## Remove disgusting samples . "NCIEWS5000muscle_T_D23N9ACXX" , "NCI0228normal_T_C3JV2ACXX" . I dont understand why tumor patient normal is used in
 ## RNASeq cohort experiment
-finalResultMatrixJoin.NoPatientNormal <-  finalResultMatrixJoin %>% filter(!Sample.ID %in% c("NCIEWS5000muscle_T_D23N9ACXX" , "NCI0228normal_T_C3JV2ACXX"))
+finalResultMatrixJoin.NoPatientNormal <-  finalResultMatrixJoin %>% filter(!Sample.ID %in% c("NCIEWS5000muscle_T_D23N9ACXX" ))
 dim(finalResultMatrixJoin.NoPatientNormal)
 
 ##Filter Fusion File
@@ -92,5 +92,5 @@ fusionFileSplits[is.na(fusionFileSplits)] <- 0
 head(fusionFileSplits)
 
 fusionFileFilt.v1 <- fusionFileSplits %>% filter( !(tool %in% c("STAR-fusion", "FusionCatcher")) & SPTool1 >= 5 | SPTool2 >= 5 | SPTool3 >= 5)
-fusionFileFilt.v2 <- fusionFileFilt.v1 %>% filter( !(var_level %in% c("Tier 2.1")) & SPTool1 >= 10 | SPTool2 >= 10 | SPTool3 >= 10)
+fusionFileFilt.v2 <- fusionFileFilt.v1 %>% filter( !(var_level %in% c("Tier 2.1")) & SPTool1 >= 10 | SPTool2 >= 10 | SPTool3 >= 10) ; dim(fusionFileFilt.v2)
 write.table(fusionFileFilt.v2 , "../FinalFilteredfusionResultMatrix.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
