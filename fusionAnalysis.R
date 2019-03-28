@@ -67,7 +67,6 @@ finalResultMatrixJoin$key <- paste(finalResultMatrixJoin$left_chr, finalResultMa
 finalfusionResultMatrix.Defuse <- finalResultMatrixJoin %>% filter( grepl('Defuse', tool)) %>%
                                           dplyr::distinct(Patient.ID, Sample.ID, Case.ID)
 dim(finalfusionResultMatrix.Defuse); View(finalfusionResultMatrix.Defuse)
-write.table(finalResultMatrixJoin, "../FinalfusionResultMatrix.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
 ## Keep only max spanning read count.
 
 ##Read Annotation Data
@@ -142,5 +141,6 @@ fusionFileFilt.v4 <- fusionFileFilt.v3[ !(fusionFileFilt.v3$key %in% fusionFileF
 fusionFileFilt.v4 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
 dim(fusionFileFilt.v4); View(fusionFileFilt.v4)
 
-write.table(fusionFileFilt.v2 , "../FinalFilteredfusionResultMatrix.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
+write.table(finalResultMatrixJoin, "../FinalfusionResultMatrix.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE )
+write.table(fusionFileFilt.v4 , "../FinalFilteredfusionResultMatrix.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
 
