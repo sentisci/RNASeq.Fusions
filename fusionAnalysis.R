@@ -128,23 +128,19 @@ fusionFileFilt.v3 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
 dim(fusionFileFilt.v3); View(fusionFileFilt.v3)
 
 ### Step 5 Keep Tier 2.1 fusions with spanning reads >= 10
-fusionFileFilt.v3.ToRemove <- fusionFileFilt.v3[ var_level %in% c("Tier 2.1") ][
-                                !(SPTool1 >= 10 & SPTool2 >= 10 & SPTool3 >= 10) ][ 
-                                !grepl("^tophatFusion$", tool) &  SPTool1 >= 5   ][
-                                !grepl("^FusionCatcher STAR-fusion STAR-fusion tophatFusion$", tool) &  SPTool3 < 5 ][
-                                !grepl("^FusionCatcher tophatFusion$", tool) &  SPTool2 < 5][
+fusionFileFilt.v3.ToRemove <- fusionFileFilt.v3[ var_level %in% c("Tier 2.1") &
+                                !(SPTool1 >= 10 & SPTool2 >= 10 & SPTool3 >= 10) & 
+                                !grepl("^tophatFusion$", tool) &  SPTool1 >= 5   &
+                                !grepl("^FusionCatcher STAR-fusion STAR-fusion tophatFusion$", tool) &  SPTool3 < 5 &
+                                !grepl("^FusionCatcher tophatFusion$", tool) &  SPTool2 < 5 &
                                 !grepl("^STAR-fusion tophatFusion$", tool) &  SPTool2 < 5
                               ]
 dim(fusionFileFilt.v3.ToRemove); View(fusionFileFilt.v3.ToRemove)
 
+### Step 6 Final filter to generate the file
+fusionFileFilt.v4 <- fusionFileFilt.v3[ !(fusionFileFilt.v3$key %in% fusionFileFilt.v3.ToRemove$key) ]
+fusionFileFilt.v4 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+dim(fusionFileFilt.v4); View(fusionFileFilt.v4)
 
-### Step X
-fusionFileFilt.v2 <- fusionFileSplits.1[ any(var_level %in% c("Tier 2.1") & SPTool1 >= 10 & SPTool2 >= 10 & SPTool3 >= 10) ] ;
-## Sanity Check
-fusionFileFilt.v2 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
-dim(fusionFileFilt.v2)
-
-fusionFileFilt.v1 <- fusionFileSplits %>% filter( !(tool %in% c("STAR-fusion", "FusionCatcher")) & SPTool1 >= 5 | SPTool2 >= 5 | SPTool3 >= 5 )
-fusionFileFilt.v2 <- fusionFileFilt.v1 %>% filter( !(var_level %in% c("Tier 2.1")) & SPTool1 >= 10 | SPTool2 >= 10 | SPTool3 >= 10) ; dim(fusionFileFilt.v2)
 write.table(fusionFileFilt.v2 , "../FinalFilteredfusionResultMatrix.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
 
