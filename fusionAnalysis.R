@@ -57,6 +57,9 @@ df_NA_TRUE <- df[which(df$Any_NA == "TRUE"),] %>% dplyr::distinct(Sample.ID,DIAG
 finalResultMatrixJoin <- finalResultMatrixJoin %>% filter(!Sample.ID %in% c(df_NA_TRUE$Sample.ID))
 dim(finalResultMatrixJoin) ; length(unique(finalResultMatrixJoin$Sample.ID))
 
+## Sanity Check
+finalResultMatrixJoin %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+
 ## Make a key 
 finalResultMatrixJoin$key <- paste(finalResultMatrixJoin$left_chr, finalResultMatrixJoin$left_gene, finalResultMatrixJoin$right_chr, 
                                    finalResultMatrixJoin$right_gene, sep="_")
@@ -80,21 +83,68 @@ leftGenePair    <- geneFusionLeft[which(!geneFusionLeft %in% Annotation$GeneName
 ## RNASeq cohort experiment
 finalResultMatrixJoin.NoPatientNormal <-  finalResultMatrixJoin %>% filter()
 dim(finalResultMatrixJoin.NoPatientNormal)
+## Sanity Check
+finalResultMatrixJoin.NoPatientNormal %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
 
 ##Filter Fusion File
-dim(finalResultMatrixJoin)
 fusionFile.NS  <- finalResultMatrixJoin.NoPatientNormal %>% filter( DIAGNOSIS.Alias %in% c("NS") ) ; dim(fusionFile.NS )
 finalResultMatrixJoin.NoNS <- finalResultMatrixJoin.NoPatientNormal %>% filter(! key %in% fusionFile.NS$key ); dim(finalResultMatrixJoin.NoNS)
 ## Remove bogus genes
 fusionFile  <- finalResultMatrixJoin.NoNS %>% filter( !(left_gene %in% leftGenePair) ) %>%  filter( !(right_gene %in% rightGenePair) ) ; dim(fusionFile)
-## Keep the selected tier
-fusionFile <- fusionFile %>% filter(var_level %in% c("Tier 1.1", "Tier 1.2", "Tier 1.3", "Tier 2.1", "Tier 2.2")) ; dim(fusionFile)
+fusionFile <- data.table(fusionFile)
+## Sanity Check
+fusionFile %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+dim(fusionFile)
 
-### Extra Filtering and Condensing
-fusionFileSplits <- fusionFile %>% tidyr::separate(spanreadcount, c("SPTool1", "SPTool2", "SPTool3"), " ")
-fusionFileSplits[is.na(fusionFileSplits)] <- 0
-head(fusionFileSplits)
+### Extra un-condensing and filtering
 
-fusionFileFilt.v1 <- fusionFileSplits %>% filter( !(tool %in% c("STAR-fusion", "FusionCatcher")) & SPTool1 >= 5 | SPTool2 >= 5 | SPTool3 >= 5)
+### Step 1 Keep the selected tier
+fusionFile <- fusionFile[ grepl("Tier 1.1|Tier 1.2|Tier 1.3|Tier 2.1", var_level) ]; 
+## Sanity Check
+fusionFile %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+dim(fusionFile)
+
+### Step 2 un-condensing
+newCols <- c("SPTool1", "SPTool2", "SPTool3")
+fusionFileSplits.v1 <- fusionFile %>% tidyr::separate( spanreadcount, newCols , " " )
+fusionFileSplits.v1[is.na(fusionFileSplits.v1)] <- 0 
+fusionFileSplits.v1[,(newCols):= lapply(.SD, as.numeric), .SDcols = newCols]
+## Sanity Check
+fusionFileSplits.v1 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+dim(fusionFileSplits.v1); View(fusionFileSplits.v1)
+
+### Step 3 Remove fusions called by Star-fusions or FusionCatcher
+fusionFileFilt.v2 <- fusionFileSplits.v1[ !grepl("^FusionCatcher$|^STAR-fusion$", tool) ] ;
+fusionFileFilt.v2 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+dim(fusionFileFilt.v2); View(fusionFileFilt.v2)
+
+### Step 4 Keep if any two o rmore callers regardless of spanning reads
+fusionFileFilt.v3 <- fusionFileFilt.v2[ grepl("^tophatFusion$", tool) &  SPTool1 >= 5 |
+                                             SPTool1 > 0  & SPTool2 > 0 |
+                                             SPTool1 > 0  & SPTool3 > 0 |
+                                             SPTool2 > 0  & SPTool3 > 0 
+                                        ];
+fusionFileFilt.v3 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+dim(fusionFileFilt.v3); View(fusionFileFilt.v3)
+
+### Step 5 Keep Tier 2.1 fusions with spanning reads >= 10
+fusionFileFilt.v3.ToRemove <- fusionFileFilt.v3[ var_level %in% c("Tier 2.1") ][
+                                !(SPTool1 >= 10 & SPTool2 >= 10 & SPTool3 >= 10) ][ 
+                                !grepl("^tophatFusion$", tool) &  SPTool1 >= 5   ][
+                                !grepl("^FusionCatcher STAR-fusion STAR-fusion tophatFusion$", tool) &  SPTool3 < 5 ][
+                                !grepl("^FusionCatcher tophatFusion$", tool) &  SPTool2 < 5][
+                                !grepl("^STAR-fusion tophatFusion$", tool) &  SPTool2 < 5
+                              ]
+dim(fusionFileFilt.v3.ToRemove); View(fusionFileFilt.v3.ToRemove)
+
+
+### Step X
+fusionFileFilt.v2 <- fusionFileSplits.1[ any(var_level %in% c("Tier 2.1") & SPTool1 >= 10 & SPTool2 >= 10 & SPTool3 >= 10) ] ;
+## Sanity Check
+fusionFileFilt.v2 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+dim(fusionFileFilt.v2)
+
+fusionFileFilt.v1 <- fusionFileSplits %>% filter( !(tool %in% c("STAR-fusion", "FusionCatcher")) & SPTool1 >= 5 | SPTool2 >= 5 | SPTool3 >= 5 )
 fusionFileFilt.v2 <- fusionFileFilt.v1 %>% filter( !(var_level %in% c("Tier 2.1")) & SPTool1 >= 10 | SPTool2 >= 10 | SPTool3 >= 10) ; dim(fusionFileFilt.v2)
 write.table(fusionFileFilt.v2 , "../FinalFilteredfusionResultMatrix.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE)
+
