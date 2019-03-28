@@ -96,7 +96,7 @@ fusionFile <- data.table(fusionFile)
 fusionFile %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
 dim(fusionFile)
 
-### Extra un-condensing and filtering
+### Extra decondensing and filtering
 
 ### Step 1 Keep the selected tier
 fusionFile <- fusionFile[ grepl("Tier 1.1|Tier 1.2|Tier 1.3|Tier 2.1", var_level) ]; 
@@ -104,7 +104,7 @@ fusionFile <- fusionFile[ grepl("Tier 1.1|Tier 1.2|Tier 1.3|Tier 2.1", var_level
 fusionFile %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
 dim(fusionFile)
 
-### Step 2 un-condensing
+### Step 2 decondensing
 newCols <- c("SPTool1", "SPTool2", "SPTool3")
 fusionFileSplits.v1 <- fusionFile %>% tidyr::separate( spanreadcount, newCols , " " )
 fusionFileSplits.v1[is.na(fusionFileSplits.v1)] <- 0 
@@ -118,7 +118,7 @@ fusionFileFilt.v2 <- fusionFileSplits.v1[ !grepl("^FusionCatcher$|^STAR-fusion$"
 fusionFileFilt.v2 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
 dim(fusionFileFilt.v2); View(fusionFileFilt.v2)
 
-### Step 4 Keep if any two o rmore callers regardless of spanning reads
+### Step 4 Keep if any two or rmore callers regardless of spanning reads
 fusionFileFilt.v3 <- fusionFileFilt.v2[ grepl("^tophatFusion$", tool) &  SPTool1 >= 5 |
                                              SPTool1 > 0  & SPTool2 > 0 |
                                              SPTool1 > 0  & SPTool3 > 0 |
