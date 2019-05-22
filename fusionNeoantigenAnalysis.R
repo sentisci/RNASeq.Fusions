@@ -2,8 +2,8 @@ rm(list = ls())
 workDir = "/Users/sindiris/R Scribble/RNASeq.Fusion.data"
 setwd(paste0(workDir,"/NeoantigensFromFusions/"))
 
-## REad well annotated DataFrame
-metaData <- read.csv(paste0(workDir,"/MetadataMapper.v2.txt"), header = T, sep = "\t", stringsAsFactors = FALSE); 
+## Read well annotated DataFrame
+metaData <- read.csv(paste0(workDir,"/MetadataMapper.v3.txt"), header = T, sep = "\t", stringsAsFactors = FALSE); 
 # metaData <- metaData %<>% dplyr::rename(SampleName = Biowulf_SampleName)
 head(metaData)
 
@@ -55,6 +55,8 @@ emptyDF <- data.frame(
   "HLA.confidence" =""
 )
 
+
+
 ### read all the files and build a matrix ####
 finalResultBedpeMAtrix <- rbindlist(lapply(bedpeDirsFusion, makResultBedpeMatrix), fill = TRUE);
 dim(finalResultBedpeMAtrix);head(finalResultBedpeMAtrix)
@@ -102,7 +104,7 @@ TumorEpitopes <- finalResultBedpeMAtrixJoin %>% dplyr::filter( grepl("Tumor", LI
                                                 dplyr::filter( !fusion %in% c("NF")); dim(TumorEpitopes); head(TumorEpitopes)
 write.table(TumorEpitopes, paste0(workDir,"/NoMaxEffinityEpitope.Filtered.Normal.Fusions.txt"), sep="\t", row.names = FALSE, quote = FALSE)
 
-TumorEpitopes$MaxSpanningReads <- unique(as.numeric(as.character(TumorEpitopes$MaxSpanningReads)))
+TumorEpitopes$MaxSpanningReads <- as.numeric(as.character(TumorEpitopes$MaxSpanningReads))
 
 ## Max affinity epitopes
 TumorEpitopes_MaxAffinity <- TumorEpitopes %>% 
@@ -126,7 +128,6 @@ dim(finalGroupBy2)
 head(finalGroupBy2)
 View(finalGroupBy2)
 #write.table(finalGroupBy2, "../For.Each.Sample.And.Fusion.maxEffinityEpitope.Filtered.Normal.Fusions.Epitopes.STATS.txt", sep="\t", row.names = FALSE, quote = FALSE)
-
 
 # ### Filter the data frame to keep only valid read-throughs ####
 # finalGroupBy2ReadThrough <- finalGroupBy2 %>% dplyr::filter( chr.5p == chr.3p )
@@ -155,13 +156,19 @@ View(finalGroupBy2)
 # finalGroupBy2ReadThroughFocal <- finalGroupBy2ReadThrough %>% filter(binaryVector)
 
 
+ 
+
+
+### Notes: Following are the two ways to manage read-through fusions. Use these files (before grouping) to add Neoantigen filters.
+## Merge this file with the fusions file from "FusionAnalysis.R" to implement neoantigen filters.
+
+################################## METHOD 1 #######################
 ### Add more filters to the above step USING ONLY TRANSGENIC FUSIONS ####
 finalGroupBy2.Filt <- finalGroupBy2 %>% dplyr::filter( !(chr.5p == chr.3p) )
 dim(finalGroupBy2.Filt)
 #head(finalGroupBy2)
 #write.table(finalGroupBy2.Filt, "../For.Each.Sample.And.Fusion.maxEffinityEpitope.Filtered.Normal.Fusions.Epitopes.STATS.Filt.NoReadThrough.txt", sep="\t", row.names = FALSE, quote = FALSE)
 write.table(finalGroupBy2.Filt, paste0(workDir,"/NoMaxEffinityEpitope.Filtered.Normal.NoReadThrough.txt"), sep="\t", row.names = FALSE, quote = FALSE)
-
 
 ## Count NeoEpitopes per sample
 EpitopesGroupBySample <- finalGroupBy2.Filt %>% dplyr::group_by(Sample.Data.ID ) %>% mutate(FusionNeoAntigenCount = n()) %>% 
@@ -176,6 +183,7 @@ View(EpitopesGroupBySample.ToPrint)
 #write.table(EpitopesGroupBySample.ToPrint, "../EpitopesGroupBySampleFilt.NoReadThrough.txt", sep="\t", row.names = FALSE, quote = FALSE)
 write.table(EpitopesGroupBySample.ToPrint, paste0(workDir,"/EpitopesGroupBySampleFilt.NoReadThrough.noMaxAffinityHLA.txt"), sep="\t", row.names = FALSE, quote = FALSE)
 
+################################## METHOD 2 #######################
 
 ### Add more filters to the above step USING readthroughs with Spanning reads >=3
 finalGroupBy2.Filt <- finalGroupBy2 %>% dplyr::filter( !(chr.5p == chr.3p | MaxSpanningReads < 3) )
@@ -196,3 +204,5 @@ EpitopesGroupBySample.ToPrint <- dplyr::full_join(metaData, EpitopesGroupBySampl
 dim(EpitopesGroupBySample)
 View(EpitopesGroupBySample.ToPrint)
 write.table(EpitopesGroupBySample.ToPrint, paste0(workDir,"/EpitopesGroupBySampleFilt.NoReadThrough.NomaxEffinityEpitope.SP3.txt"), sep="\t", row.names = FALSE, quote = FALSE)
+
+
