@@ -156,9 +156,7 @@ write.table(fusionFileFilt.v4 , "../FinalFilteredfusionResultMatrix.txt", sep="\
 
 
 
-### Extra decondensing and filtering for Fusion Neoantigens #######
-
-#### Write the filters and get the final file. ####
+### Extra decondensing and filtering for Fusion Neoantigens ####
 
 ### Step 1 decondensing
 newCols <- c("SPTool1", "SPTool2", "SPTool3")
@@ -166,12 +164,12 @@ fusionFileSplits.v1 <- fusionFile %>% tidyr::separate( spanreadcount, newCols , 
 fusionFileSplits.v1[is.na(fusionFileSplits.v1)] <- 0 
 fusionFileSplits.v1[,(newCols):= lapply(.SD, as.numeric), .SDcols = newCols]
 ## Sanity Check
-fusionFileSplits.v1 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+fusionFileSplits.v1 %>% filter(grepl("^CREM$|^INO80D$|^PAX3$|^PAX7$|^EWSR1$|^FLI1$|^SSX18$", left_gene)) %>% dim()
 dim(fusionFileSplits.v1); View(fusionFileSplits.v1)
 
 ### Step 2 Remove fusions called by Star-fusions or FusionCatcher
 fusionFileFilt.v2 <- fusionFileSplits.v1[ !grepl("^FusionCatcher$|^STAR-fusion$", tool) ] ;
-fusionFileFilt.v2 %>% filter(grepl("CREM|INO80D", right_gene)) %>% dim()
+fusionFileFilt.v2 %>% filter(grepl("^CREM$|^INO80D$|^PAX3$|^PAX7$|^EWSR1$|^FLI1$|^SSX18$", right_gene)) %>% dim()
 dim(fusionFileFilt.v2); View(fusionFileFilt.v2)
 
 ### Step 3 Keep if any two or rmore callers regardless of spanning reads
@@ -181,7 +179,7 @@ fusionFileFilt.v3 <- fusionFileFilt.v2[ grepl("^tophatFusion$", tool) &  SPTool1
                                           SPTool2 > 0  & SPTool3 > 0  ];
 dim(fusionFileFilt.v3); View(fusionFileFilt.v3)
 
-write.table(fusionFileFilt.v3, "../FinalFusionResultMatrixForNeoantigens.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE )
+#write.table(fusionFileFilt.v3, "../FinalFusionResultMatrixForNeoantigens.txt", sep="\t", quote = FALSE, row.names = FALSE, col.names = TRUE )
 
 ## merge this with the final fusion bedpe file.Remove any fusions in bedpe file that aren't present in the above file.
 ## file "finalGroupBy2.Filt" from "fusionNeoantigenAnalysis.R"
@@ -194,26 +192,75 @@ colsToChange <- c("start.5p", "end.5p", "start.3p", "end.3p")
 neoepitopesFromFusions[,(colsToChange):= lapply(.SD, as.character), .SDcols = colsToChange]
 neoepitopesFromFusions[,(colsToChange):= lapply(.SD, as.numeric), .SDcols = colsToChange]
 
-neoepitopesFromFusionsID <- neoepitopesFromFusions %>% dplyr::mutate(left_position = ifelse(neoepitopesFromFusions$start.5p > neoepitopesFromFusions$end.5p, 
-                                                           neoepitopesFromFusions$start.5p, 
+# ## Make new ID
+neoepitopesFromFusionsID <- neoepitopesFromFusions %>% dplyr::mutate(left_position = ifelse(neoepitopesFromFusions$start.5p > neoepitopesFromFusions$end.5p,
+                                                           neoepitopesFromFusions$start.5p,
                                                            neoepitopesFromFusions$end.5p),
-                                         right_position = ifelse(neoepitopesFromFusions$start.3p > neoepitopesFromFusions$end.3p, 
-                                                                 neoepitopesFromFusions$start.3p, 
+                                         right_position = ifelse(neoepitopesFromFusions$start.3p > neoepitopesFromFusions$end.3p,
+                                                                 neoepitopesFromFusions$start.3p,
                                                                  neoepitopesFromFusions$end.3p) )
+# ## Make PrimaryID for neoepitopes
+neoepitopesFromFusionsID %<>% dplyr::mutate( primaryID = paste0("chr", neoepitopesFromFusionsID$chr.5p,
+                                                                "_", neoepitopesFromFusionsID$left_position,
+                                                                "_", neoepitopesFromFusionsID$fusion, "_",
+                                                                "chr", neoepitopesFromFusionsID$chr.3p, "_",
+                                                                neoepitopesFromFusionsID$right_position) ) %>% data.table()
+# View(neoepitopesFromFusionsID); dim(neoepitopesFromFusionsID)
+## There is an issue in INTEGRATENEO output. Some times the coordinates (Start and End) positions are reduced by one. Just to get those fusions Adding one to
+## the INTEGRATENEO output.
+neoepitopesFromFusionsID.AddOne <- neoepitopesFromFusionsID %>% dplyr::mutate(left_position = gsub('.{1}$', '', left_position),
+                                                                              right_position = gsub('.{1}$', '', right_position))
+neoepitopesFromFusionsID.AddOne %<>% dplyr::mutate( primaryID = paste0("chr", neoepitopesFromFusionsID.AddOne$chr.5p, "_",
+                                                                              neoepitopesFromFusionsID.AddOne$left_position, "_",
+                                                                              neoepitopesFromFusionsID.AddOne$fusion, "_",
+                                                                       "chr", neoepitopesFromFusionsID.AddOne$chr.3p, "_",
+                                                                              neoepitopesFromFusionsID.AddOne$right_position) ) %>% data.table()
+# View(neoepitopesFromFusionsID.AddOne); dim(neoepitopesFromFusionsID.AddOne)
 
-neoepitopesFromFusionsID %<>% dplyr::mutate( primaryID = paste0("chr", neoepitopesFromFusionsID$chr.5p, "_", neoepitopesFromFusionsID$left_position,
-                                             "_", neoepitopesFromFusionsID$fusion, "_",
-                                             "chr", neoepitopesFromFusionsID$chr.3p, "_", neoepitopesFromFusionsID$right_position) ) %>% data.table()
-View(neoepitopesFromFusionsID); dim(neoepitopesFromFusionsID)
+## Make PrimaryID for fusions
+validFusionsForNeoantigenID <- validFusionsForNeoantigen %>% dplyr::mutate(primaryID.AddOne =  paste0(validFusionsForNeoantigen$left_chr, "_",
+                                                                                               gsub('.{1}$', '', validFusionsForNeoantigen$left_position), "_",
+                                                                                              paste0(validFusionsForNeoantigen$left_gene, ">>", validFusionsForNeoantigen$right_gene), "_",
+                                                                                               validFusionsForNeoantigen$right_chr, "_",
+                                                                                              gsub('.{1}$', '', validFusionsForNeoantigen$right_position)) ) %>% data.table()
+View(validFusionsForNeoantigenID) 
 
-validFusionsForNeoantigenID <- validFusionsForNeoantigen %<>% dplyr::mutate(primaryID = paste0(validFusionsForNeoantigen$left_chr, "_", validFusionsForNeoantigen$left_position,
-                                                                "_", paste0(validFusionsForNeoantigen$left_gene,">>", validFusionsForNeoantigen$right_gene),  "_",
-                                                                validFusionsForNeoantigen$right_chr, "_", validFusionsForNeoantigen$right_position))
-View(validFusionsForNeoantigenID)
+################### Sanity Check #################################
+neoepitopesFromFusionsID[grep("ASPSCR1", neoepitopesFromFusionsID$primaryID)]
+neoepitopesFromFusionsID[grep("SS18", neoepitopesFromFusionsID$primaryID)]
+neoepitopesFromFusionsID[grep("EWSR1", neoepitopesFromFusionsID$primaryID)]
+neoepitopesFromFusionsID[grep("PAX7", neoepitopesFromFusionsID$primaryID)]
+neoepitopesFromFusionsID[grep("PAX3", neoepitopesFromFusionsID$primaryID)]
+neoepitopesFromFusionsID[grep("INO80D", neoepitopesFromFusionsID$primaryID)]
+neoepitopesFromFusionsID[grep("CREM", neoepitopesFromFusionsID$primaryID)]
+
+validFusionsForNeoantigenID[grep("ASPSCR1", validFusionsForNeoantigenID$primaryID)]
+validFusionsForNeoantigenID[grep("SS18", validFusionsForNeoantigenID$primaryID),]
+validFusionsForNeoantigenID[grep("EWSR1", validFusionsForNeoantigenID$primaryID)]
+validFusionsForNeoantigenID[grep("PAX7", validFusionsForNeoantigenID$primaryID)]
+validFusionsForNeoantigenID[grep("PAX3", validFusionsForNeoantigenID$primaryID),]
+validFusionsForNeoantigenID[grep("INO80D", validFusionsForNeoantigenID$primaryID),]
+validFusionsForNeoantigenID[grep("CREM", validFusionsForNeoantigenID$primaryID),]
+##################################################################
 
 ## Filter only valid fusion-neoepitopes
-neoepitopesFromFusionsID.Filtered <- neoepitopesFromFusionsID[primaryID %in% validFusionsForNeoantigenID$primaryID]; dim(neoepitopesFromFusionsID.Filtered)
-write.table(neoepitopesFromFusionsID.Filtered, paste0(workDir,"/NoMaxEffinityEpitope.Filtered.Normal.NoReadThrough.ValidFusions.txt"), sep="\t", row.names = FALSE, quote = FALSE)
+neoepitopesFromFusionsID.AddOne.Filtered <- neoepitopesFromFusionsID.AddOne[primaryID %in% validFusionsForNeoantigenID$primaryID.AddOne]; dim(neoepitopesFromFusionsID.AddOne.Filtered)
+neoepitopesFromFusionsID.Filtered.Final <- neoepitopesFromFusionsID.AddOne.Filtered; dim(neoepitopesFromFusionsID.Filtered.Final)
+##
+
+#################### Sanity Check ################################
+neoepitopesFromFusionsID.Filtered.Final[grep("ASPSCR1", neoepitopesFromFusionsID.Filtered.Final$primaryID)]
+neoepitopesFromFusionsID.Filtered.Final[grep("SS18", neoepitopesFromFusionsID.Filtered.Final$primaryID)]
+neoepitopesFromFusionsID.Filtered.Final[grep("EWSR1", neoepitopesFromFusionsID.Filtered.Final$primaryID)]
+neoepitopesFromFusionsID.Filtered.Final[grep("PAX7", neoepitopesFromFusionsID.Filtered.Final$primaryID)]
+neoepitopesFromFusionsID.Filtered.Final[grep("PAX3", neoepitopesFromFusionsID.Filtered.Final$primaryID)]
+neoepitopesFromFusionsID.Filtered.Final[grep("INO80D", neoepitopesFromFusionsID.Filtered.Final$primaryID)]
+neoepitopesFromFusionsID.Filtered.Final[grep("CREM", neoepitopesFromFusionsID.Filtered.Final$primaryID)]
+##################################################################
+
+write.table(neoepitopesFromFusionsID.Filtered, paste0(workDir,"/NoMaxEffinityEpitope.Filtered.Normal.ReadThrough.GTE.3.ValidFusions.txt"), sep="\t", row.names = FALSE, quote = FALSE)
+
+
 
 ## Count NeoEpitopes per sample
 EpitopesGroupBySample <- neoepitopesFromFusionsID.Filtered %>% dplyr::group_by(Sample.Data.ID ) %>% mutate(FusionNeoAntigenCount = n()) %>% 

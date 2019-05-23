@@ -186,7 +186,7 @@ write.table(EpitopesGroupBySample.ToPrint, paste0(workDir,"/EpitopesGroupBySampl
 ################################## METHOD 2 #######################
 
 ### Add more filters to the above step USING readthroughs with Spanning reads >=3
-finalGroupBy2.Filt <- finalGroupBy2 %>% dplyr::filter( !(chr.5p == chr.3p | MaxSpanningReads < 3) )
+finalGroupBy2.Filt <- finalGroupBy2 %>% dplyr::filter( !(chr.5p == chr.3p & MaxSpanningReads < 3) )
 dim(finalGroupBy2.Filt)
 #head(finalGroupBy2)
 #write.table(finalGroupBy2.Filt, "../For.Each.Sample.And.Fusion.maxEffinityEpitope.Filtered.Normal.Fusions.Epitopes.STATS.Filt.SP3.txt", sep="\t", row.names = FALSE, quote = FALSE)
